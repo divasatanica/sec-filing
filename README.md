@@ -32,11 +32,12 @@ uv run uvicorn sec_filing_agent.main:app --reload
 
 ## Configuration
 
-Settings are read from `.env` or environment variables with the `APP_` prefix:
+Settings are read from `.env.{environment}` (for example, `.env.development`)
+or environment variables with the `SEC_FILING_AGENT_` prefix:
 
 ```dotenv
-APP_HOST=127.0.0.1
-APP_PORT=8000
+SEC_FILING_AGENT_HOST=127.0.0.1
+SEC_FILING_AGENT_PORT=8000
 ```
 
 ## Add your API

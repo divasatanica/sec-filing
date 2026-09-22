@@ -26,5 +26,5 @@ app = create_app()
 
 
 def run() -> None:
-    settings = get_settings("production")
+    settings = get_settings("development")
     uvicorn.run("sec_filing_agent.main:app", host=settings.host, port=settings.port, reload=False)

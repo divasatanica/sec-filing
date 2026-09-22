@@ -1,6 +1,7 @@
 """Typed application configuration loaded from environment variables."""
 
 from functools import lru_cache
+from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,20 +15,29 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
         env_file_encoding="utf-8",
-        env_prefix="APP_",
+        env_prefix="SEC_FILING_AGENT_",
         extra="ignore",
     )
 
+    sec_user_agent: str
     app_name: str = "FastAPI Service"
     environment: str = "development"
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
 
+    def __init__(self, environment: str = "development", **values: Any) -> None:
+        """Load settings from the file associated with ``environment``."""
+
+        super().__init__(
+            _env_file=f".env.{environment}",
+            environment=environment,
+            **values,
+        )
+
 
 @lru_cache
-def get_settings() -> Settings:
+def get_settings(environment: str = "development") -> Settings:
     """Return one settings object per process."""
 
-    return Settings()
+    return Settings(environment=environment)
