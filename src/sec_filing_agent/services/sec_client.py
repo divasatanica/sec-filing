@@ -55,7 +55,7 @@ async def fetch_api(url: str):
                     delay_seconds = (
                         int(retry_after)
                         if retry_after is not None
-                        else pow(RETRY_BASE_DELAY_SECOND, 2 * attempt)
+                        else RETRY_BASE_DELAY_SECOND * pow(2, attempt)
                     )
                     logger.warning(
                         f"{error_status_code} for {url}, \
