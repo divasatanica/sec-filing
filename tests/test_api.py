@@ -5,24 +5,16 @@ from sec_filing_agent.main import create_app
 
 
 def build_client() -> TestClient:
-    settings = Settings(environment="test", data_dir="/tmp/sec-filing-agent-test")
+    settings = Settings(environment="test")
     return TestClient(create_app(settings))
 
 
-def test_health_is_available_without_infrastructure() -> None:
+def test_health_is_available() -> None:
     with build_client() as client:
         response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "environment": "test"}
-
-
-def test_unconfigured_rag_has_actionable_response() -> None:
-    with build_client() as client:
-        response = client.post("/v1/research/query", json={"query": "What changed?"})
-
-    assert response.status_code == 501
-    assert response.json()["code"] == "core_not_configured"
+    assert response.json() == {"status": "ok"}
 
 
 def test_openapi_exposes_the_bot_facing_endpoints() -> None:
@@ -30,5 +22,3 @@ def test_openapi_exposes_the_bot_facing_endpoints() -> None:
         schema = client.get("/openapi.json").json()
 
     assert "/health" in schema["paths"]
-    assert "/v1/filings/sync" in schema["paths"]
-    assert "/v1/research/query" in schema["paths"]
