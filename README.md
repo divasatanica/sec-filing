@@ -27,7 +27,7 @@ The service listens on `http://127.0.0.1:8000` by default. Open
 For development with automatic reload:
 
 ```bash
-uv run uvicorn sec_filing_agent.main:app --reload
+uv run uvicorn sec_filing_agent.main:app --reload --no-access-log
 ```
 
 ## Configuration
@@ -38,7 +38,23 @@ or environment variables with the `SEC_FILING_AGENT_` prefix:
 ```dotenv
 SEC_FILING_AGENT_HOST=127.0.0.1
 SEC_FILING_AGENT_PORT=8000
+SEC_FILING_AGENT_LOG_LEVEL=INFO
+# Defaults to false in development and true in other environments.
+SEC_FILING_AGENT_LOG_JSON=true
 ```
+
+## Logging
+
+The service emits structured request logs through `structlog`. Every response
+includes an `X-Request-ID`; callers may supply one to correlate work across
+services. Development output is readable in a terminal. Production output is
+one JSON object per line, including timestamp, level, logger, request ID,
+method, path, response status, and duration.
+
+Use `structlog.contextvars.bind_contextvars(user_id=...)` after authentication
+to add safe application context to all logs produced during that request. Do
+not write credentials, authorization headers, or sensitive request bodies to
+logs.
 
 ## Add your API
 

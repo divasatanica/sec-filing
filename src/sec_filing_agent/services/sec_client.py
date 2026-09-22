@@ -3,10 +3,12 @@
 import asyncio
 
 import httpx
+import structlog
 
 from sec_filing_agent.core.config import get_settings
 
 settings = get_settings()
+logger = structlog.get_logger(__name__)
 
 SEC_BASE_DOMAIN = "https://www.sec.gov"
 SEC_DATA_DOMAIN = "https://data.sec.gov"
@@ -48,14 +50,16 @@ async def fetch_api(url: str):
                 return response
             except httpx.HTTPStatusError as error:
                 error_status_code = error.response.status_code
-                if (
-                    error.response.status_code == 429 or error_status_code == 503
-                ) and attempt < retries:
+                if (error_status_code == 429 or error_status_code == 503) and attempt < retries:
                     retry_after = error.response.headers.get("Retry-After")
                     delay_seconds = (
                         int(retry_after)
                         if retry_after is not None
                         else pow(RETRY_BASE_DELAY_SECOND, 2 * attempt)
+                    )
+                    logger.warning(
+                        f"{error_status_code} for {url}, \
+                            retrying ({attempt + 1}/{retries}) in {delay_seconds} seconds"
                     )
                     await asyncio.sleep(delay_seconds)
                     continue
@@ -81,6 +85,7 @@ async def get_ticker_map() -> dict[str, CompanyTickerEntry]:
     if ticker_map is not None:
         return ticker_map
 
+    logger.info("Fetching company_tickers.json...")
     response = await fetch_api(f"{SEC_BASE_DOMAIN}/files/company_tickers.json")
     data = response.json()
 
@@ -89,6 +94,7 @@ async def get_ticker_map() -> dict[str, CompanyTickerEntry]:
         ticker_object = data[key]
         ticker_map[ticker_object["ticker"]] = ticker_object
 
+    logger.info(f"Loaded {len(ticker_map)} ticker->CIK mappings")
     return ticker_map
 
 
