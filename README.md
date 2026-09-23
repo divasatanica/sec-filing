@@ -1,7 +1,6 @@
-# FastAPI Service
+# SEC Filing Agent
 
-A minimal FastAPI skeleton for a local HTTP service. It intentionally contains
-no application-specific data models, infrastructure adapters, or business logic.
+A FastAPI skeleton plus a framework-independent SEC EDGAR collection layer.
 
 ## Included
 
@@ -9,6 +8,8 @@ no application-specific data models, infrastructure adapters, or business logic.
 - Central router in `src/sec_filing_agent/api/router.py`
 - `GET /health` endpoint
 - Typed environment configuration in `src/sec_filing_agent/core/config.py`
+- `SecClient` and `FilingCollector` services for SEC discovery, section parsing,
+  and annual XBRL metric normalization
 - `uv` dependency management and a small API test suite
 
 ## Quick start
@@ -17,7 +18,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --dev
-cp .env.example .env
+cp .env.example .env.development
 uv run sec-filing-agent
 ```
 
@@ -38,6 +39,7 @@ or environment variables with the `SEC_FILING_AGENT_` prefix:
 ```dotenv
 SEC_FILING_AGENT_HOST=127.0.0.1
 SEC_FILING_AGENT_PORT=8000
+SEC_FILING_AGENT_SEC_USER_AGENT="sec-filing-agent/0.1 your-email@example.com"
 SEC_FILING_AGENT_LOG_LEVEL=INFO
 # Defaults to false in development and true in other environments.
 SEC_FILING_AGENT_LOG_JSON=true
@@ -61,6 +63,28 @@ logs.
 Create a route module under `src/sec_filing_agent/api/routes/`, then include
 its router in `src/sec_filing_agent/api/router.py`. Keep business logic outside
 route functions as the project grows.
+
+## SEC service layer
+
+The SEC collector deliberately has no FastAPI dependency. Create the client in
+your route dependency or application lifespan, then inject it into the collector:
+
+```python
+from sec_filing_agent.services.filing_collector import FilingCollector
+from sec_filing_agent.services.sec_client import SecClient
+
+async with SecClient("sec-filing-agent/0.1 your-email@example.com") as client:
+    result = await FilingCollector(client).collect(
+        ["AAPL"],
+        form_types=["10-K", "10-Q"],
+        max_filings_per_ticker=3,
+        include_historical=False,
+    )
+```
+
+`result` contains filing metadata, section text with source locations, annual
+XBRL metrics with fact provenance, and best-effort warnings. Build your own
+request models, routes, chunking, retrieval, and LLM generation on top of it.
 
 Run checks with:
 
