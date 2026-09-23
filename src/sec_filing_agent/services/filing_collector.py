@@ -8,7 +8,7 @@ from datetime import date
 from typing import Any, Literal
 
 from sec_filing_agent.models import CollectionResult, FilingMetadata
-from sec_filing_agent.services.filing_parser import extract_sections
+from sec_filing_agent.services.filing_parser import MAX_SECTION_CHARS, extract_sections
 from sec_filing_agent.services.sec_client import (
     SEC_BASE_DOMAIN,
     SecClient,
@@ -64,9 +64,12 @@ class FilingCollector:
         max_filings_per_ticker: int = 50,
         *,
         include_historical: bool = False,
+        section_max_chars: int | None = MAX_SECTION_CHARS,
     ) -> CollectionResult:
         if not 1 <= max_filings_per_ticker <= 50:
             raise ValueError("max_filings_per_ticker must be between 1 and 50")
+        if section_max_chars is not None and section_max_chars < 1:
+            raise ValueError("section_max_chars must be positive or None")
         normalized_tickers = _normalize_tickers(tickers)
         normalized_forms = _normalize_forms(form_types)
         if not normalized_tickers:
@@ -86,6 +89,7 @@ class FilingCollector:
                 requested_forms=normalized_forms,
                 max_filings_per_ticker=max_filings_per_ticker,
                 include_historical=include_historical,
+                section_max_chars=section_max_chars,
             )
         return result
 
@@ -98,6 +102,7 @@ class FilingCollector:
         requested_forms: set[str],
         max_filings_per_ticker: int,
         include_historical: bool,
+        section_max_chars: int | None,
     ) -> None:
         # Materialize every output bucket even on failure so API/RAG callers do not have
         # to distinguish an unknown ticker from an omitted response key.
@@ -144,6 +149,7 @@ class FilingCollector:
                 filing,
                 source_url=fetched.document.source_url,
                 document_kind=fetched.document.document_kind,
+                max_chars=section_max_chars,
             )
             result.sections[ticker].extend(parsed.sections)
             result.warnings[ticker].extend(

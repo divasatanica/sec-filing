@@ -95,9 +95,16 @@ def extract_sections(
     *,
     source_url: str,
     document_kind: str,
-    max_chars: int = MAX_SECTION_CHARS,
+    max_chars: int | None = MAX_SECTION_CHARS,
 ) -> SectionParseResult:
-    """Extract form-specific sections and explain every missing or ambiguous match."""
+    """Extract form-specific sections and explain every missing or ambiguous match.
+
+    ``None`` preserves a complete section for durable storage. API callers keep the
+    bounded default so a single filing cannot produce an unexpectedly large response.
+    """
+
+    if max_chars is not None and max_chars < 1:
+        raise ValueError("max_chars must be positive or None")
 
     text = filing_text(content)
     specs = section_specs_for(filing.form_type)
@@ -130,8 +137,9 @@ def extract_sections(
         section_text = text[start:end].strip()
         if len(section_text) < 80:
             warnings.append(f"section_unusually_short:{spec.item_code}:{len(section_text)}")
-        truncated = len(section_text) > max_chars
+        truncated = max_chars is not None and len(section_text) > max_chars
         if truncated:
+            assert max_chars is not None
             section_text = f"{section_text[:max_chars].rstrip()}\n[... truncated for length ...]"
         sections.append(
             ParsedSection(

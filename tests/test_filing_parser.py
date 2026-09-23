@@ -111,3 +111,20 @@ def test_parser_records_truncation_and_normalized_offsets() -> None:
     assert section.source_start == 0
     assert section.source_end and section.source_end > 100
     assert section.text.endswith("[... truncated for length ...]")
+
+
+def test_parser_preserves_the_full_section_when_max_chars_is_none() -> None:
+    content = f"Item 2.02 Results\n{'x' * 300}"
+
+    parsed = extract_sections(
+        content,
+        filing("8-K"),
+        source_url="https://www.sec.gov/example.html",
+        document_kind="primary",
+        max_chars=None,
+    )
+
+    section = parsed.sections[0]
+    assert section.truncated is False
+    assert len(section.text) > 300
+    assert "[... truncated for length ...]" not in section.text

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     )
 
     sec_user_agent: str
+    database_url: str
     app_name: str = "FastAPI Service"
     environment: str = "development"
     host: str = "127.0.0.1"
