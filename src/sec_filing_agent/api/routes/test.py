@@ -32,7 +32,7 @@ async def get_ticker(ticker: str) -> TestResponse:
         result = await FilingCollector(client).collect(
             tickers=[ticker],
             form_types=["10-K"],
-            max_filings_per_ticker=3,
+            max_filings_per_ticker=1,
             include_historical=False,
         )
     return TestResponse(status="ok", data=result)

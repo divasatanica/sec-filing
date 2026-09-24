@@ -33,7 +33,7 @@ class FakeSecClient:
         self.historical_names: list[str] = []
 
     async def get_ticker_map(self) -> dict[str, dict[str, Any]]:
-        return {"TEST": {"ticker": "TEST", "cik_str": 1}}
+        return {"TEST": {"ticker": "TEST", "cik_str": 1, "title": "TEST CORP"}}
 
     async def get_submissions(self, cik10: str) -> dict[str, Any]:
         assert cik10 == "0000000001"
@@ -134,6 +134,7 @@ def test_discovery_builds_archive_urls_and_uses_explicit_foreign_fallback() -> N
         cik10="0000000001",
         requested_forms={"10-K"},
         limit=1,
+        ticker_map={"FOREIGN": {"title": "FOREIGN CORP"}},
     )
 
     assert warnings == ["foreign_fallback_used:20-F,20-F/A,40-F,40-F/A"]

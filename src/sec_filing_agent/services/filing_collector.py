@@ -54,6 +54,8 @@ class FetchDocumentResult:
 class FilingCollector:
     """Collect SEC source documents and normalized financial facts for one or more tickers."""
 
+    _ticker_map: dict[str, dict[str, Any]] = {}
+
     def __init__(self, client: SecClient) -> None:
         self._client = client
 
@@ -79,6 +81,7 @@ class FilingCollector:
 
         result = CollectionResult()
         ticker_map = await self._client.get_ticker_map()
+        self._ticker_map = ticker_map
         # Keep ticker processing sequential here. SecClient centralizes pacing, and this
         # makes a partial response deterministic; callers can add bounded concurrency later.
         for ticker in normalized_tickers:
@@ -134,6 +137,7 @@ class FilingCollector:
             cik10=cik10,
             requested_forms=requested_forms,
             limit=max_filings_per_ticker,
+            ticker_map=ticker_map,
         )
         result.filings[ticker] = filings
         result.warnings[ticker].extend(submission_warnings)
@@ -307,6 +311,7 @@ def select_filings(
     cik10: str,
     requested_forms: set[str],
     limit: int,
+    ticker_map: dict[str, dict[str, Any]],
 ) -> tuple[list[FilingMetadata], list[str]]:
     """Select exact requested forms, falling back only for foreign issuer equivalents."""
 
@@ -336,6 +341,7 @@ def select_filings(
             ticker=ticker,
             cik10=cik10,
             selection_reason=selection_reason,
+            ticker_map=ticker_map,
         )
         for record in ordered
     ], warnings
@@ -347,6 +353,7 @@ def filing_metadata_from_record(
     ticker: str,
     cik10: str,
     selection_reason: Literal["requested", "foreign_fallback"],
+    ticker_map: dict[str, dict[str, Any]],
 ) -> FilingMetadata:
     accession_number = str(record["accession_number"])
     primary_document = record.get("primary_document")
@@ -362,7 +369,11 @@ def filing_metadata_from_record(
         if primary_document
         else f"{archive_directory}/{accession_number}-index.html"
     )
+    company = ticker_map.get(ticker)
+    title = company["title"] if company is not None else ""
+
     return FilingMetadata(
+        title=title,
         ticker=ticker,
         cik=cik10,
         form_type=str(record["form"]),

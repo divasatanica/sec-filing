@@ -13,6 +13,7 @@ class FilingMetadata(BaseModel):
 
     ticker: str
     cik: str
+    title: str
     form_type: str
     filing_date: date | None = None
     report_date: date | None = None

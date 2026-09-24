@@ -8,6 +8,7 @@ def selected_filing() -> FilingMetadata:
     return FilingMetadata(
         ticker="TEST",
         cik="0000000001",
+        title="TEST CORP",
         form_type="10-K/A",
         filing_date=date(2025, 2, 1),
         report_date=date(2024, 12, 31),

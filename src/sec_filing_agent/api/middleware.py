@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import structlog
 from fastapi import FastAPI, Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 logger = structlog.get_logger(__name__)
 REQUEST_ID_HEADER = "X-Request-ID"
@@ -42,7 +42,22 @@ def add_request_logging(app: FastAPI) -> None:
             )
             return response
         except Exception:
-            logger.exception("request_failed")
-            raise
+            # FastAPI handles expected HTTPException and validation responses itself.
+            # This branch is the final guard for unexpected handler/service failures:
+            # log the real exception, but never expose its implementation details over HTTP.
+            duration_ms = round((perf_counter() - started_at) * 1_000, 2)
+            logger.exception(
+                "request_failed",
+                status_code=500,
+                duration_ms=duration_ms,
+            )
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "detail": "Internal server error",
+                    "request_id": request_id,
+                },
+                headers={REQUEST_ID_HEADER: request_id},
+            )
         finally:
             structlog.contextvars.clear_contextvars()
