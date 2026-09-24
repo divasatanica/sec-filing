@@ -124,6 +124,59 @@ class FilingSection(Base):
     )
 
 
+class FilingSectionCleaning(Base):
+    """当前 raw filing section 的可重建清洗结果。"""
+
+    __tablename__ = "filing_section_cleanings"
+    __table_args__ = (UniqueConstraint("section_id", name="uq_filing_section_cleanings_section"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    section_id: Mapped[int] = mapped_column(
+        ForeignKey("filing_sections.id", ondelete="CASCADE"),
+        index=True,
+    )
+    content_clean: Mapped[str] = mapped_column(Text)
+    source_content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    content_hash: Mapped[str] = mapped_column(String(64), index=True)
+
+    is_indexable: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    exclusion_reason: Mapped[str | None] = mapped_column(String(100))
+    cleaning_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class FilingChunk(Base):
+    """可检索的、从一个清洗 section 派生出的 token-bounded 文本块。"""
+
+    __tablename__ = "filing_chunks"
+    __table_args__ = (
+        UniqueConstraint("cleaning_id", "chunk_index", name="uq_filing_chunks_cleaning_index"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cleaning_id: Mapped[int] = mapped_column(
+        ForeignKey("filing_section_cleanings.id", ondelete="CASCADE"),
+        index=True,
+    )
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    token_count: Mapped[int] = mapped_column(Integer)
+    content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+
 class FinancialFact(Base):
     """一条可审计的 XBRL 财务事实。"""
 

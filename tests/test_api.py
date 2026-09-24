@@ -1,7 +1,16 @@
 from fastapi.testclient import TestClient
 
+from sec_filing_agent.api.routes import chunks, cleanings
 from sec_filing_agent.core.config import Settings
 from sec_filing_agent.main import create_app
+from sec_filing_agent.services.chunking_service import (
+    ChunkingSummary,
+    CleaningsNotFoundError,
+)
+from sec_filing_agent.services.cleaning_service import (
+    CleaningSummary,
+    CorpusNotFoundError,
+)
 
 TEST_DATABASE_URL = "postgresql+asyncpg://test:test@127.0.0.1:5432/sec_filing_test"
 
@@ -62,6 +71,79 @@ def test_openapi_exposes_the_bot_facing_endpoints() -> None:
         schema = client.get("/openapi.json").json()
 
     assert "/health" in schema["paths"]
+    assert "/cleanings/tickers/{ticker}" in schema["paths"]
+    assert "/chunks/tickers/{ticker}" in schema["paths"]
+
+
+class _SessionContext:
+    async def __aenter__(self) -> object:
+        return object()
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+def test_cleanings_endpoint_returns_a_service_summary(monkeypatch) -> None:
+    class FakeCleaningService:
+        def __init__(self, session: object) -> None:
+            del session
+
+        async def clean_ticker(self, ticker: str, *, force: bool) -> CleaningSummary:
+            assert (ticker, force) == ("rklb", True)
+            return CleaningSummary(
+                ticker="RKLB",
+                scanned_sections=42,
+                created_sections=42,
+                excluded_sections=3,
+            )
+
+    monkeypatch.setattr(cleanings, "SessionLocal", lambda: _SessionContext())
+    monkeypatch.setattr(cleanings, "FilingCleaningService", FakeCleaningService)
+
+    with build_client() as client:
+        response = client.post("/cleanings/tickers/rklb", json={"force": True})
+
+    assert response.status_code == 200
+    assert response.json()["ticker"] == "RKLB"
+    assert response.json()["created_sections"] == 42
+    assert response.json()["excluded_sections"] == 3
+
+
+def test_chunking_endpoint_maps_missing_cleanings_to_conflict(monkeypatch) -> None:
+    class FakeChunkingService:
+        def __init__(self, session: object) -> None:
+            del session
+
+        async def chunk_ticker(self, ticker: str, *, force: bool) -> ChunkingSummary:
+            del ticker, force
+            raise CleaningsNotFoundError("RKLB")
+
+    monkeypatch.setattr(chunks, "SessionLocal", lambda: _SessionContext())
+    monkeypatch.setattr(chunks, "ChunkingService", FakeChunkingService)
+
+    with build_client() as client:
+        response = client.post("/chunks/tickers/RKLB", json={})
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Run cleanings before chunking"
+
+
+def test_cleanings_endpoint_maps_missing_raw_sections_to_not_found(monkeypatch) -> None:
+    class FakeCleaningService:
+        def __init__(self, session: object) -> None:
+            del session
+
+        async def clean_ticker(self, ticker: str, *, force: bool) -> CleaningSummary:
+            del ticker, force
+            raise CorpusNotFoundError("MISSING")
+
+    monkeypatch.setattr(cleanings, "SessionLocal", lambda: _SessionContext())
+    monkeypatch.setattr(cleanings, "FilingCleaningService", FakeCleaningService)
+
+    with build_client() as client:
+        response = client.post("/cleanings/tickers/MISSING", json={})
+
+    assert response.status_code == 404
 
 
 def test_settings_loads_the_file_for_the_requested_environment(tmp_path, monkeypatch) -> None:
