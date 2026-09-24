@@ -129,11 +129,18 @@ def extract_sections(
         selected.append((matches[-1].start(), spec))
 
     selected.sort(key=lambda item: item[0])
+    boundary_starts = _section_boundary_starts(text, filing.form_type)
     sections: list[ParsedSection] = []
     for index, (start, spec) in enumerate(selected):
-        # The following recognized heading is a stable boundary even when a filing uses
-        # inconsistent HTML nesting. Offsets refer to the normalized text below.
-        end = selected[index + 1][0] if index + 1 < len(selected) else len(text)
+        # A section ends at the next formal heading, including headings for Items we do
+        # not persist. Using the next selected Item here would make, for example,
+        # Item 1A absorb Items 1B through 6 when Item 7 is the next requested section.
+        # Offsets refer to the normalized text below.
+        end = _next_boundary_after(boundary_starts, start)
+        if end is None:
+            # Forms without a stable Item grammar retain the previous best-effort
+            # behaviour: use the next selected section or the end of the document.
+            end = selected[index + 1][0] if index + 1 < len(selected) else len(text)
         section_text = text[start:end].strip()
         if len(section_text) < 80:
             warnings.append(f"section_unusually_short:{spec.item_code}:{len(section_text)}")
@@ -205,9 +212,54 @@ def _matches_part(text: str, position: int, required_part: str | None) -> bool:
     return last_ii > last_i
 
 
+def _section_boundary_starts(text: str, form_type: str) -> list[int]:
+    """Return every formal section boundary for forms with a stable Item grammar.
+
+    Target section specifications intentionally cover only the material we persist.
+    Boundary patterns must instead cover every formal Item; otherwise unselected
+    Items leak into the previous selected section.
+    """
+
+    form = form_type.strip().upper()
+    patterns = _boundary_patterns_for(form)
+    if not patterns:
+        return []
+
+    starts = {
+        match.start()
+        for pattern in patterns
+        for match in re.finditer(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
+    }
+    return sorted(starts)
+
+
+def _next_boundary_after(boundary_starts: list[int], start: int) -> int | None:
+    return next((boundary for boundary in boundary_starts if boundary > start), None)
+
+
+def _boundary_patterns_for(form_type: str) -> tuple[str, ...]:
+    if form_type in {"10-K", "10-K/A", "10-KT"}:
+        return (_TEN_K_BOUNDARY_PATTERN, _TERMINAL_BOUNDARY_PATTERN)
+    if form_type in {"10-Q", "10-Q/A"}:
+        return (_TEN_Q_BOUNDARY_PATTERN, _PART_BOUNDARY_PATTERN, _TERMINAL_BOUNDARY_PATTERN)
+    if form_type in {"8-K", "8-K/A"}:
+        return (_EIGHT_K_BOUNDARY_PATTERN, _TERMINAL_BOUNDARY_PATTERN)
+    if form_type in {"20-F", "20-F/A", "40-F", "40-F/A"}:
+        return (_FOREIGN_ANNUAL_BOUNDARY_PATTERN, _TERMINAL_BOUNDARY_PATTERN)
+    return ()
+
+
 def _item_pattern(item: str, heading: str = r".*") -> str:
     escaped = re.escape(item).replace(r"\ ", r"\s*")
     return rf"^\s*ITEM\s*{escaped}(?:[.\-–—\s]+){heading}$"
+
+
+_TEN_K_BOUNDARY_PATTERN = r"^\s*ITEM\s*(?:1(?:[A-C])?|[2-9]|1[0-6])(?:[.\-–—:\s]+).*$"
+_TEN_Q_BOUNDARY_PATTERN = r"^\s*ITEM\s*(?:1A|[1-6])(?:[.\-–—:\s]+).*$"
+_EIGHT_K_BOUNDARY_PATTERN = r"^\s*ITEM\s*[1-9]\.\d{2}(?:[.\-–—:\s]+).*$"
+_FOREIGN_ANNUAL_BOUNDARY_PATTERN = r"^\s*ITEM\s*\d{1,2}(?:[A-Z])?(?:[.\-–—:\s]+).*$"
+_PART_BOUNDARY_PATTERN = r"^\s*PART\s+(?:I|II)\b.*$"
+_TERMINAL_BOUNDARY_PATTERN = r"^\s*(?:SIGNATURES?|EXHIBIT\s+INDEX)\b.*$"
 
 
 _TEN_K_SPECS = (

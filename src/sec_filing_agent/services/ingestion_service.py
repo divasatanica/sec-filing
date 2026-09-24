@@ -45,6 +45,7 @@ class IngestionService:
     async def ingest_ticker(
         self,
         tickers: str | list[str],
+        max_filings_per_ticker: int,
         form_type: str | list[str] = "10-K",
     ) -> None:
         """Collect tickers first, then persist each filing and its facts atomically."""
@@ -58,6 +59,7 @@ class IngestionService:
                 ticker_list,
                 form_type_list,
                 section_max_chars=None,
+                max_filings_per_ticker=max_filings_per_ticker,
             )
         except Exception as error:
             await self._mark_runs_failed(runs, error)
