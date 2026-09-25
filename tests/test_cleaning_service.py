@@ -1,5 +1,7 @@
 import asyncio
 
+from sqlalchemy import BigInteger
+
 from sec_filing_agent.db.tables import FilingChunk, FilingSection, FilingSectionCleaning
 from sec_filing_agent.services.cleaning_service import (
     FilingCleaningService,
@@ -149,3 +151,4 @@ def test_cleaning_models_define_the_required_cascade_relationships() -> None:
     assert cleaning_fk.ondelete == "CASCADE"
     assert chunk_fk.ondelete == "CASCADE"
     assert {column.name for column in FilingSectionCleaning.__table__.primary_key.columns} == {"id"}
+    assert isinstance(FilingChunk.__table__.c.id.type, BigInteger)

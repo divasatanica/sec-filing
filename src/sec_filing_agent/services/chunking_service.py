@@ -24,6 +24,9 @@ ENCODING_NAME = "cl100k_base"
 MAX_CHUNK_TOKENS = 500
 CHUNK_OVERLAP_TOKENS = 80
 _SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
+_THOUSANDS_SEPARATED_NUMBER = re.compile(
+    r"(?<![\d,])(?:[$€£]\s*)?\(?[-+]?\d{1,3}(?:,\d{3})+(?:\.\d+)?%?\)?(?![\d,])"
+)
 
 
 class CleaningsNotFoundError(LookupError):
@@ -183,11 +186,33 @@ def _split_oversized_line(
         return units
 
     token_ids = encoding.encode(line)
-    step = max_tokens - overlap_tokens
-    return [
-        encoding.decode(token_ids[start : start + max_tokens])
-        for start in range(0, len(token_ids), step)
-    ]
+    safe_boundaries = _safe_token_boundaries(line, token_ids, encoding)
+    chunks: list[str] = []
+    start = 0
+    while start < len(token_ids):
+        preferred_end = min(start + max_tokens, len(token_ids))
+        end = preferred_end
+        while end > start and end not in safe_boundaries:
+            end -= 1
+        if end == start:
+            # A single protected atom larger than the configured chunk size is
+            # exceptionally unlikely for SEC numeric values. Preserve it rather than
+            # silently corrupting the value, even though this one chunk exceeds budget.
+            end = next(
+                boundary
+                for boundary in range(preferred_end + 1, len(token_ids) + 1)
+                if boundary in safe_boundaries
+            )
+
+        chunks.append(encoding.decode(token_ids[start:end]))
+        if end == len(token_ids):
+            break
+
+        next_start = max(start + 1, end - overlap_tokens)
+        while next_start > start and next_start not in safe_boundaries:
+            next_start -= 1
+        start = next_start if next_start > start else end
+    return chunks
 
 
 def _overlap_with_next(
@@ -212,7 +237,31 @@ def _tail_by_tokens(content: str, token_count: int, encoding: tiktoken.Encoding)
     if token_count == 0:
         return ""
     tokens = encoding.encode(content)
-    return encoding.decode(tokens[-token_count:])
+    safe_boundaries = _safe_token_boundaries(content, tokens, encoding)
+    start = max(0, len(tokens) - token_count)
+    while start > 0 and start not in safe_boundaries:
+        start -= 1
+    return encoding.decode(tokens[start:])
+
+
+def _safe_token_boundaries(
+    content: str,
+    token_ids: list[int],
+    encoding: tiktoken.Encoding,
+) -> set[int]:
+    """Return token boundaries that do not bisect a comma-separated numeric literal."""
+
+    decoded, offsets = encoding.decode_with_offsets(token_ids)
+    if decoded != content:
+        raise ValueError("token decoding did not reproduce the source text")
+
+    numeric_spans = [match.span() for match in _THOUSANDS_SEPARATED_NUMBER.finditer(content)]
+    char_boundaries = [*offsets, len(content)]
+    return {
+        token_index
+        for token_index, char_offset in enumerate(char_boundaries)
+        if not any(start < char_offset < end for start, end in numeric_spans)
+    }
 
 
 def _join_units(units: list[str]) -> str:

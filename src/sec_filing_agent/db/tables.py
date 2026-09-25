@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -162,7 +163,7 @@ class FilingChunk(Base):
         UniqueConstraint("cleaning_id", "chunk_index", name="uq_filing_chunks_cleaning_index"),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     cleaning_id: Mapped[int] = mapped_column(
         ForeignKey("filing_section_cleanings.id", ondelete="CASCADE"),
         index=True,
