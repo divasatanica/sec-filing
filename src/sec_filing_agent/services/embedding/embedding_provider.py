@@ -15,5 +15,5 @@ class UniversalEmbeddingProvider:
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self.embedding_impl.embed_documents(texts)
 
-    def embed_queries(self, queries: list[str]) -> list[list[str]]:
-        return self.embed_queries(queries)
+    def embed_queries(self, queries: list[str]) -> list[list[float]]:
+        return self.embedding_impl.embed_queries(queries)

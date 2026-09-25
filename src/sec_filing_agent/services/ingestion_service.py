@@ -294,6 +294,7 @@ class IngestionService:
         row = (await self._session.execute(statement)).scalar_one_or_none()
 
         values = {
+            "cik": filing.cik,
             "accession_number": accession_number,
             "metric_key": collected_fact.metric_key,
             "namespace": metric.namespace,

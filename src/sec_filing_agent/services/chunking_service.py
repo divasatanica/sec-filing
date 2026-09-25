@@ -71,9 +71,9 @@ class ChunkingService:
             if raw_section_exists is None:
                 raise CorpusNotFoundError(normalized_ticker)
 
-            cleanings = (
-                await self._session.scalars(
-                    select(FilingSectionCleaning)
+            cleaning_rows = (
+                await self._session.execute(
+                    select(FilingSectionCleaning, Filing.cik)
                     .join(FilingSection, FilingSection.id == FilingSectionCleaning.section_id)
                     .join(Filing, Filing.accession_number == FilingSection.accession_number)
                     .join(CompanyTicker, CompanyTicker.cik == Filing.cik)
@@ -81,10 +81,10 @@ class ChunkingService:
                     .order_by(Filing.filing_date, FilingSection.id)
                 )
             ).all()
-            if not cleanings:
+            if not cleaning_rows:
                 raise CleaningsNotFoundError(normalized_ticker)
 
-            for cleaning in cleanings:
+            for cleaning, cik in cleaning_rows:
                 summary.scanned_sections += 1
                 if not cleaning.is_indexable:
                     summary.skipped_sections += 1
@@ -107,6 +107,7 @@ class ChunkingService:
                 self._session.add_all(
                     FilingChunk(
                         cleaning_id=cleaning.id,
+                        cik=cik,
                         chunk_index=index,
                         content=chunk.content,
                         token_count=chunk.token_count,

@@ -146,7 +146,11 @@ def test_cleaning_service_is_idempotent_and_invalidates_chunks_when_forced() -> 
 
 def test_cleaning_models_define_the_required_cascade_relationships() -> None:
     cleaning_fk = next(iter(FilingSectionCleaning.__table__.foreign_keys))
-    chunk_fk = next(iter(FilingChunk.__table__.foreign_keys))
+    chunk_fk = next(
+        foreign_key
+        for foreign_key in FilingChunk.__table__.foreign_keys
+        if foreign_key.parent.name == "cleaning_id"
+    )
 
     assert cleaning_fk.ondelete == "CASCADE"
     assert chunk_fk.ondelete == "CASCADE"

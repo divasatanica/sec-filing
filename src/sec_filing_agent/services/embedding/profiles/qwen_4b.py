@@ -5,14 +5,6 @@ from sentence_transformers import SentenceTransformer
 
 from sec_filing_agent.services.embedding.base import BaseEmbeddingImplementation
 
-DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
-
-model = SentenceTransformer(
-    "Qwen/Qwen3-Embedding-4B",
-    local_files_only=True,
-    device=DEVICE,
-)
-
 QUERY_PROMPT = (
     "Instruct: Given an investor question, retrieve the most relevant passages "
     "from SEC filings. Match the company, fiscal period, financial metric, "
@@ -21,8 +13,22 @@ QUERY_PROMPT = (
 
 
 class Qwen3Embedding4B(BaseEmbeddingImplementation):
+    model_loaded = False
+
+    def load_model(self):
+        DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
+        self.model = SentenceTransformer(
+            "Qwen/Qwen3-Embedding-4B",
+            local_files_only=True,
+            device=DEVICE,
+        )
+        self.model_loaded = True
+
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        vectors = model.encode(
+        if not self.model_loaded:
+            self.load_model()
+
+        vectors = self.model.encode(
             texts,
             batch_size=8,
             normalize_embeddings=True,
@@ -32,7 +38,10 @@ class Qwen3Embedding4B(BaseEmbeddingImplementation):
         return vectors.tolist()
 
     def embed_queries(self, queries: list[str]) -> list[list[float]]:
-        vectors = model.encode(
+        if not self.model_loaded:
+            self.load_model()
+
+        vectors = self.model.encode(
             queries,
             prompt=QUERY_PROMPT,
             batch_size=8,
