@@ -4,17 +4,11 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 
-from sec_filing_agent.db.session import SessionLocal
-from sec_filing_agent.db.tables import CompanyTicker
+from sec_filing_agent.services.company_service import CompanyService
 from sec_filing_agent.services.embedding.embedding_service import EmbeddingService
 
 router = APIRouter(prefix="/embeddings", tags=["embeddings"])
-
-
-class CIKNotFoundError(LookupError):
-    """CIK should exist in with specific ticker"""
 
 
 class BuildIndexRequest(BaseModel):
@@ -66,15 +60,7 @@ async def build_index(
     ticker: str, payload: BuildIndexRequest, background_tasks: BackgroundTasks
 ) -> BuildIndexResponse:
     """Create or refresh the embedding index for one ticker's chunks."""
-    async with SessionLocal() as session:
-        result = await session.scalar(
-            select(CompanyTicker).where(CompanyTicker.ticker == ticker).limit(1)
-        )
-
-        if result is None:
-            raise CIKNotFoundError(ticker)
-
-        cik = result.cik
+    cik = await CompanyService().get_cik_by_ticker(ticker)
 
     job_id = uuid4()
     background_tasks.add_task(build_index_job, job_id, cik, payload.force)
