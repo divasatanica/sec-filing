@@ -44,7 +44,7 @@ def test_plan_validates_response_and_keeps_query_in_user_message():
     plan, create = run_plan(
         '{"semantic_query":"supply chain risks","tickers":["AAPL"],"report_date_from":"2023-01-01"}'
     )
-    assert plan.tickers == ["AAPL"]
+    assert plan.tickers == ("AAPL",)
     assert plan.report_date_from == date(2023, 1, 1)
     kwargs = create.call_args.kwargs
     assert kwargs["response_format"] == {"type": "json_object"}

@@ -1,0 +1,340 @@
+- description: calendar_q1
+  vars:
+    query: RKLB 2026 Q1 增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-01-01'
+      report_date_to: '2026-03-31'
+    closed_interval: true
+- description: calendar_q2
+  vars:
+    query: RKLB 2026 Q2 增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-04-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: calendar_q3
+  vars:
+    query: RKLB 2026 Q3 增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-07-01'
+      report_date_to: '2026-09-30'
+    closed_interval: true
+- description: calendar_q4
+  vars:
+    query: RKLB 2026 Q4 增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-10-01'
+      report_date_to: '2026-12-31'
+    closed_interval: true
+- description: compact_quarter
+  vars:
+    query: RKLB 2026Q3 增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-07-01'
+      report_date_to: '2026-09-30'
+    closed_interval: true
+- description: chinese_quarter
+  vars:
+    query: RKLB 2026 年第三季度增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-07-01'
+      report_date_to: '2026-09-30'
+    closed_interval: true
+- description: english_quarter
+  vars:
+    query: How did RKLB grow in Q3 2026?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-07-01'
+      report_date_to: '2026-09-30'
+    closed_interval: true
+- description: future_quarter
+  vars:
+    query: RKLB 2099 Q3 增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2099-07-01'
+      report_date_to: '2099-09-30'
+    closed_interval: true
+- description: future_year
+  vars:
+    query: 查找 RKLB 2099 日历年内报告的收入增长情况
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2099-01-01'
+      report_date_to: '2099-12-31'
+    closed_interval: true
+- description: calendar_year
+  vars:
+    query: RKLB 2026 日历年内报告的增长情况
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-01-01'
+      report_date_to: '2026-12-31'
+    closed_interval: true
+- description: first_half
+  vars:
+    query: RKLB 2026 年上半年报告中的收入增长
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-01-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: cross_year
+  vars:
+    query: RKLB 报告期末在 2025-10-01 到 2026-03-31 之间的报告
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2025-10-01'
+      report_date_to: '2026-03-31'
+    closed_interval: true
+- description: exact_date
+  vars:
+    query: RKLB 报告期末为 2026-06-30 的报告中，收入增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-06-30'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: leap_february
+  vars:
+    query: RKLB 报告期末在 2028 年 2 月内的报告
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2028-02-01'
+      report_date_to: '2028-02-29'
+    closed_interval: true
+- description: quarterly_report
+  vars:
+    query: RKLB 2026 Q2 的季度报展示了怎样的增长情况
+    expected:
+      tickers:
+      - RKLB
+      form_types:
+      - 10-Q
+      report_date_from: '2026-04-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: company_name
+  vars:
+    query: Rocket Lab 2026 Q2 季度报告中的收入增长
+    expected:
+      tickers:
+      - RKLB
+      form_types:
+      - 10-Q
+      report_date_from: '2026-04-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: multiple_companies
+  vars:
+    query: 比较 RKLB 和 AAPL 2026 Q2 季度报告中的收入增长
+    expected:
+      tickers:
+      - RKLB
+      - AAPL
+      form_types:
+      - 10-Q
+      report_date_from: '2026-04-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: no_period
+  vars:
+    query: RKLB 收入增长如何
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: null
+      report_date_to: null
+- description: latest_no_reference
+  vars:
+    query: RKLB 最新季度报告中的收入增长
+    expected:
+      tickers:
+      - RKLB
+      form_types:
+      - 10-Q
+      report_date_from: null
+      report_date_to: null
+- description: relative_no_reference
+  vars:
+    query: RKLB 下一季度的增长情况
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: null
+      report_date_to: null
+- description: calendar_q1_en
+  vars:
+    query: How did RKLB grow in Q1 2026?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-01-01'
+      report_date_to: '2026-03-31'
+    closed_interval: true
+- description: calendar_q2_en
+  vars:
+    query: How did RKLB grow in Q2 2026?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-04-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: calendar_q4_en
+  vars:
+    query: How did RKLB grow in Q4 2026?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-10-01'
+      report_date_to: '2026-12-31'
+    closed_interval: true
+- description: future_quarter_en
+  vars:
+    query: How did RKLB grow in Q3 2099?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2099-07-01'
+      report_date_to: '2099-09-30'
+    closed_interval: true
+- description: future_year_en
+  vars:
+    query: Find revenue growth in RKLB reports with reporting period ends during calendar
+      year 2099.
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2099-01-01'
+      report_date_to: '2099-12-31'
+    closed_interval: true
+- description: calendar_year_en
+  vars:
+    query: Summarize growth in RKLB reports with reporting period ends during calendar
+      year 2026.
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-01-01'
+      report_date_to: '2026-12-31'
+    closed_interval: true
+- description: first_half_en
+  vars:
+    query: What revenue growth is shown in RKLB reports for the first half of 2026?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-01-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: cross_year_en
+  vars:
+    query: Find RKLB reports with reporting period ends between October 1, 2025 and
+      March 31, 2026, inclusive.
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2025-10-01'
+      report_date_to: '2026-03-31'
+    closed_interval: true
+- description: exact_date_en
+  vars:
+    query: What revenue growth is shown in the RKLB report whose reporting period
+      ends on June 30, 2026?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2026-06-30'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: leap_february_en
+  vars:
+    query: Find RKLB reports with reporting period ends during February 2028.
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: '2028-02-01'
+      report_date_to: '2028-02-29'
+    closed_interval: true
+- description: quarterly_report_en
+  vars:
+    query: What growth does RKLB's Q2 2026 quarterly report show?
+    expected:
+      tickers:
+      - RKLB
+      form_types:
+      - 10-Q
+      report_date_from: '2026-04-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: company_name_en
+  vars:
+    query: What revenue growth is shown in Rocket Lab's Q2 2026 quarterly report?
+    expected:
+      tickers:
+      - RKLB
+      form_types:
+      - 10-Q
+      report_date_from: '2026-04-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: multiple_companies_en
+  vars:
+    query: Compare revenue growth in the Q2 2026 quarterly reports of RKLB and AAPL.
+    expected:
+      tickers:
+      - RKLB
+      - AAPL
+      form_types:
+      - 10-Q
+      report_date_from: '2026-04-01'
+      report_date_to: '2026-06-30'
+    closed_interval: true
+- description: no_period_en
+  vars:
+    query: How is RKLB revenue growing?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: null
+      report_date_to: null
+- description: latest_no_reference_en
+  vars:
+    query: What revenue growth is shown in RKLB's latest quarterly report?
+    expected:
+      tickers:
+      - RKLB
+      form_types:
+      - 10-Q
+      report_date_from: null
+      report_date_to: null
+- description: relative_no_reference_en
+  vars:
+    query: What is the growth outlook for RKLB next quarter?
+    expected:
+      tickers:
+      - RKLB
+      report_date_from: null
+      report_date_to: null

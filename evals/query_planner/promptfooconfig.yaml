@@ -1,0 +1,15 @@
+description: QueryPlanner structured interpretation regression suite
+prompts:
+  - '{{query}}'
+providers:
+  - id: file://provider.py
+    label: production-query-planner
+    config:
+      workers: 1
+defaultTest:
+  assert:
+    - type: python
+      value: file://assertions.py
+tests: file://cases.yaml
+evaluateOptions:
+  maxConcurrency: 1

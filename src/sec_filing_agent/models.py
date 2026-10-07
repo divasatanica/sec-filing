@@ -84,7 +84,7 @@ class PlannerOutput(BaseModel):
     tickers: tuple[str, ...] | None = Field(
         default=None,
         description=(
-            "Uppercase stock ticker symbols explicitly requested by the user "
+            "Uppercase stock ticker symbols extracted or reasonably inferred from the request "
             "or unambiguously resolved from company names. Never guess. "
             "Null means no reliable ticker constraint."
         ),
@@ -92,8 +92,8 @@ class PlannerOutput(BaseModel):
     form_types: tuple[str, ...] | None = Field(
         default=None,
         description=(
-            "Explicitly requested SEC form types, such as 10-K, 10-Q, or 20-F. "
-            "Do not infer 10-K solely from 'annual report'. "
+            "SEC form types extracted or reasonably inferred from the requested report "
+            "or disclosure, such as quarterly report -> 10-Q. "
             "Null means no form-type constraint."
         ),
     )
@@ -101,23 +101,30 @@ class PlannerOutput(BaseModel):
         default=None,
         description=(
             "Inclusive lower bound on the reporting period end date, "
-            "in YYYY-MM-DD format. Not the filing date or fiscal-year label. "
-            "Null means no lower bound."
+            "in YYYY-MM-DD format, extracted or inferred from the requested period. "
+            "Not the filing date. Normalize years and calendar quarters to date ranges. "
+            "Range searches require both bounds to form a closed inclusive interval; "
+            "exact dates use equal bounds. Populate future periods too, regardless of "
+            "filing availability. Null means unspecified or genuinely unresolved."
         ),
     )
     report_date_to: date | None = Field(
         default=None,
         description=(
             "Inclusive upper bound on the reporting period end date, "
-            "in YYYY-MM-DD format. Not the filing date or fiscal-year label. "
-            "Null means no upper bound."
+            "in YYYY-MM-DD format, extracted or inferred from the requested period. "
+            "Not the filing date. Normalize years and calendar quarters to date ranges. "
+            "Range searches require both bounds to form a closed inclusive interval; "
+            "exact dates use equal bounds. Populate future periods too, regardless of "
+            "filing availability. Null means unspecified or genuinely unresolved."
         ),
     )
     item_codes: tuple[str, ...] | None = Field(
         default=None,
         description=(
-            "Stored section item codes explicitly requested by the user. "
-            "Do not infer section restrictions from search topics. "
+            "Stored section item codes extracted or reasonably inferred from the topic "
+            "or requested section when the mapping is reliable and does not exclude "
+            "passages needed to answer the question. "
             "Null means no section constraint."
         ),
     )
