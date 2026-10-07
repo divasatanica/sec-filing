@@ -39,6 +39,7 @@ class SearchRequest(BaseModel):
 class SearchResponse(BaseModel):
     """Results returned by a semantic search."""
 
+    plan: PlannerOutput
     results: list[SearchResult]
 
 
@@ -86,7 +87,7 @@ async def search(payload: SearchRequest) -> SearchResponse:
 
     results = await EmbeddingService().search(
         output.semantic_query,
-        10,
+        payload.top_k,
         RetrievalFilters(
             ciks=cik_list,
             form_types=output.form_types,
@@ -96,7 +97,7 @@ async def search(payload: SearchRequest) -> SearchResponse:
         ),
     )
 
-    return SearchResponse(results=results)
+    return SearchResponse(results=results, plan=output)
 
 
 @router.post("/planner/plan", response_model=PlannerResponse)

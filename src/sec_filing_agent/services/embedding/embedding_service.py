@@ -1,7 +1,10 @@
 """Embedding Service"""
 
+import re
+
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
+from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert
 
 from sec_filing_agent.db.session import SessionLocal
@@ -112,7 +115,116 @@ class EmbeddingService:
 
         result_after = await self._structured_filter(query_vectors, top_k, filters)
 
-        return result_after
+        return await self._complete_chunk_context(result_after)
+
+    async def _complete_chunk_context(self, results: list[SearchResult]) -> list[SearchResult]:
+        """Repair overlapping chunk boundaries without changing ranks or stored text.
+
+        Fetch both neighbors in one query, scoped to the same cleaning version/section.
+        Only the returned content is expanded; its score still belongs to the hit.
+        """
+        if not results:
+            return results
+
+        previous = aliased(FilingChunk)
+        following = aliased(FilingChunk)
+        statement = (
+            select(FilingChunk.id, previous.content, following.content)
+            .outerjoin(
+                previous,
+                (previous.cleaning_id == FilingChunk.cleaning_id)
+                & (previous.chunk_index == FilingChunk.chunk_index - 1),
+            )
+            .outerjoin(
+                following,
+                (following.cleaning_id == FilingChunk.cleaning_id)
+                & (following.chunk_index == FilingChunk.chunk_index + 1),
+            )
+            .where(FilingChunk.id.in_([result.chunk_id for result in results]))
+        )
+        async with SessionLocal() as session:
+            neighbors = {
+                chunk_id: (before, after)
+                for chunk_id, before, after in (await session.execute(statement)).tuples().all()
+            }
+
+        completed = []
+        for result in results:
+            before, after = neighbors.get(result.chunk_id, (None, None))
+            content = result.content
+            if before is not None:
+                content = self._restore_chunk_prefix(before, content)
+            if after is not None:
+                content = self._restore_chunk_suffix(after, content)
+            completed.append(result.model_copy(update={"content": content}))
+        return completed
+
+    @staticmethod
+    def _restore_chunk_prefix(previous: str, content: str) -> str:
+        """Use exact overlap to restore a partial opening sentence or line.
+
+        Bounds are in characters, independent of the embedding tokenizer. If there
+        is no reliable overlap/boundary, leave the hit unchanged instead of guessing.
+        """
+        previous = previous.rstrip()
+        current = content.lstrip()
+        # A minimum match avoids treating coincidental punctuation as overlap.
+        overlap = next(
+            (
+                size
+                for size in range(min(len(previous), len(current), 2000), 15, -1)
+                if previous.endswith(current[:size])
+            ),
+            0,
+        )
+        if not overlap:
+            return content
+
+        start = len(previous) - overlap
+        # Decimal points are not sentence boundaries; preserve line/table boundaries.
+        boundaries = [0] + [
+            match.end() for match in re.finditer(r"\n\s*|[.!?]\s+", previous[:start])
+        ]
+        boundary = boundaries[-1]
+        prefix = previous[boundary:start]
+        if not prefix.strip() or len(prefix) > 800:
+            return content
+
+        # Prefix ends exactly where the overlapping text begins: no inserted space
+        # that could turn "$141" + ".3 million" into a broken numeric literal.
+        return prefix.lstrip() + current
+
+    @staticmethod
+    def _restore_chunk_suffix(following: str, content: str) -> str:
+        """Restore a partial closing sentence/line using the next chunk's overlap."""
+        current = content.rstrip()
+        following = following.lstrip()
+        overlap = next(
+            (
+                size
+                for size in range(min(len(current), len(following), 2000), 15, -1)
+                if current.endswith(following[:size])
+            ),
+            0,
+        )
+        if not overlap:
+            return content
+
+        remainder = following[overlap:]
+        # Already at a sentence/line boundary: do not append the next sentence/row.
+        if not remainder or remainder.startswith("\n"):
+            return content
+        if current.endswith((".", "!", "?")) and remainder[0].isspace():
+            return content
+
+        boundary = re.search(r"\n|[.!?](?=\s|$)", remainder)
+        if boundary is None:
+            return content
+        end = boundary.start() if boundary.group() == "\n" else boundary.end()
+        suffix = remainder[:end]
+        if not suffix.strip() or len(suffix) > 800:
+            return content
+        return current + suffix
 
     async def _structured_filter(
         self, query_vector: list[float], top_k: int, filters: RetrievalFilters
