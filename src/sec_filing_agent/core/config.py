@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     port: int = Field(default=8000, ge=1, le=65535)
     log_level: str = "INFO"
     log_json: bool | None = None
+    deepseek_api_key: SecretStr | None = None
+    deepseek_base_url: str = "https://api.deepseek.com"
+    deepseek_model: str = "deepseek-flash"
 
     def __init__(self, environment: str = "development", **values: Any) -> None:
         """Load settings from the file associated with ``environment``."""

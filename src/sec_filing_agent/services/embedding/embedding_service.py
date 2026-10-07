@@ -5,8 +5,15 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from sec_filing_agent.db.session import SessionLocal
-from sec_filing_agent.db.tables import ChunkEmbedding, FilingChunk
+from sec_filing_agent.db.tables import (
+    ChunkEmbedding,
+    FilingChunk,
+    Filing,
+    FilingSection,
+    FilingSectionCleaning,
+)
 from sec_filing_agent.services.embedding.embedding_provider import UniversalEmbeddingProvider
+from sec_filing_agent.models import SearchResult, RetrievalFilters
 
 
 class ChunkNotFoundError(LookupError):
@@ -95,7 +102,7 @@ class EmbeddingService:
 
         return len(chunks_to_embed)
 
-    async def search(self, query: str):
+    async def search(self, query: str, top_k: int, filters: RetrievalFilters):
         query_vectors = (
             await run_in_threadpool(
                 self.embedding_provider.embed_queries,
@@ -103,4 +110,77 @@ class EmbeddingService:
             )
         )[0]
 
-        return query_vectors
+        result_after = await self._structured_filter(query_vectors, top_k, filters)
+
+        return result_after
+
+    async def _structured_filter(
+        self, query_vector: list[float], top_k: int, filters: RetrievalFilters
+    ):
+        distance = ChunkEmbedding.embedding.cosine_distance(query_vector).label("distance")
+
+        statement = (
+            select(
+                FilingChunk.id.label("chunk_id"),
+                distance,
+                Filing.accession_number,
+                Filing.form_type,
+                Filing.report_date,
+                FilingSection.item_code,
+                FilingChunk.content,
+                FilingSection.source_url,
+                Filing.cik,
+            )
+            .select_from(ChunkEmbedding)
+            .join(FilingChunk, FilingChunk.id == ChunkEmbedding.chunk_id)
+            .join(FilingSectionCleaning, FilingSectionCleaning.id == FilingChunk.cleaning_id)
+            .join(FilingSection, FilingSection.id == FilingSectionCleaning.section_id)
+            .join(Filing, Filing.accession_number == FilingSection.accession_number)
+            .where(ChunkEmbedding.model_profile_id == DEFAULT_MODEL_PROFILE_ID)
+        )
+
+        if filters.ciks is not None:
+            statement = statement.where(ChunkEmbedding.cik.in_(filters.ciks))
+
+        if filters.form_types is not None:
+            statement = statement.where(Filing.form_type.in_(filters.form_types))
+
+        if filters.report_date_from is not None:
+            statement = statement.where(Filing.report_date >= filters.report_date_from)
+
+        if filters.report_date_to is not None:
+            statement = statement.where(Filing.report_date <= filters.report_date_to)
+
+        if filters.item_codes is not None:
+            statement = statement.where(FilingSection.item_code.in_(filters.item_codes))
+
+        statement = statement.order_by(distance).limit(top_k)
+
+        # retrieval first round with cosine distance
+        async with SessionLocal() as session:
+            result = await session.execute(statement)
+
+        return [
+            SearchResult(
+                chunk_id=chunk_id,
+                score=1 - distance,
+                cik=cik,
+                accession_number=accession_number,
+                form_type=form_type,
+                report_date=report_date,
+                item_code=item_code,
+                content=content,
+                source_url=source_url,
+            )
+            for (
+                chunk_id,
+                distance,
+                accession_number,
+                form_type,
+                report_date,
+                item_code,
+                content,
+                source_url,
+                cik,
+            ) in result.tuples()
+        ]

@@ -2,11 +2,14 @@
 
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
 from sec_filing_agent.services.company_service import CompanyService
-from sec_filing_agent.services.embedding.embedding_service import EmbeddingService
+from sec_filing_agent.services.embedding.embedding_service import EmbeddingService, RetrievalFilters
+from sec_filing_agent.models import SearchResult, PlannerOutput
+from sec_filing_agent.services.query_planner.planner import QueryPlanner
+
 
 router = APIRouter(prefix="/embeddings", tags=["embeddings"])
 
@@ -33,22 +36,22 @@ class SearchRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=100)
 
 
-class SearchResult(BaseModel):
-    """One chunk selected by semantic search."""
-
-    chunk_id: int
-    score: float
-    ticker: str
-    accession_number: str
-    item_code: str
-    content: str
-    source_url: str
-
-
 class SearchResponse(BaseModel):
     """Results returned by a semantic search."""
 
     results: list[SearchResult]
+
+
+class PlannerRequest(BaseModel):
+    """User query planner accepted"""
+
+    query: str
+
+
+class PlannerResponse(BaseModel):
+    """Planned query returned by query planner"""
+
+    query_plan: PlannerOutput
 
 
 async def build_index_job(job_id: UUID, cik: str, force: bool):
@@ -71,4 +74,35 @@ async def build_index(
 @router.post("/search", response_model=SearchResponse)
 async def search(payload: SearchRequest) -> SearchResponse:
     """Search indexed filing chunks using a natural-language query."""
-    return SearchResponse(results=[])
+
+    planner = QueryPlanner()
+    output = await planner.plan(payload.query)
+
+    if output.tickers is None:
+        raise HTTPException(400, 'No tickers extracted from "{payload.query}"')
+
+    ciks = await CompanyService().get_cik_map(list(output.tickers))
+    cik_list = tuple([ciks[ticker] for ticker in output.tickers])
+
+    results = await EmbeddingService().search(
+        output.semantic_query,
+        10,
+        RetrievalFilters(
+            ciks=cik_list,
+            form_types=output.form_types,
+            item_codes=output.item_codes,
+            report_date_from=output.report_date_from,
+            report_date_to=output.report_date_to,
+        ),
+    )
+
+    return SearchResponse(results=results)
+
+
+@router.post("/planner/plan", response_model=PlannerResponse)
+async def plan(payload: PlannerRequest) -> PlannerResponse:
+
+    planner = QueryPlanner()
+    output = await planner.plan(payload.query)
+
+    return PlannerResponse(query_plan=output)
