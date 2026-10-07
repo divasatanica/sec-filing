@@ -92,3 +92,32 @@ Run checks with:
 uv run ruff check .
 uv run pytest
 ```
+
+### QueryPlanner 模型回归评测
+
+修改 planner prompt 或 PlannerOutput schema 后，运行真实 DeepSeek 基线评测：
+
+```bash
+npm ci
+npm run eval:planner
+```
+
+问题集、判分方式和运行要求见 [evals/query_planner/README.md](evals/query_planner/README.md)。
+
+### OpenSpec 开发工作流
+
+Node.js 工具要求 Node 22.22+，通过 `npm ci` 安装锁定版本。
+OpenSpec 已初始化，配置见 `openspec/config.yaml`，Codex 工作流技能位于 `.agents/skills/`。
+
+```bash
+npm run openspec -- list
+npm run spec:validate
+```
+
+在 Codex 中使用 `$openspec-propose` 描述新变更，使用 `$openspec-apply-change` 实施，
+完成后使用 `$openspec-archive-change` 归档。规范位于 `openspec/specs/`，变更位于
+`openspec/changes/`。当前已按九个 capability 整理现有功能基线，见
+[OpenSpec 规范索引](openspec/README.md)。
+
+修改 QueryPlanner prompt、输出 schema 或模型时，任务应包含 `npm run eval:planner`
+基线评测，并检查结构化字段与 semantic_query。

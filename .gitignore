@@ -10,3 +10,7 @@ internal-docs/
 
 .env.*
 !.env.example
+
+# Local model evaluation outputs
+evals/**/results/
+node_modules/

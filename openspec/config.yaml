@@ -1,0 +1,23 @@
+schema: spec-driven
+
+context: |
+  Language: English
+  All OpenSpec specifications and planning artifacts must be written in English.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Existing capability specs are indexed in openspec/README.md; consult relevant
+  specs before planning changes and keep observed limitations distinct from proposals.
+  Project: SEC filing retrieval service built with Python, FastAPI, Pydantic,
+  PostgreSQL/pgvector, and a DeepSeek QueryPlanner.
+  Python dependencies are managed by uv; developer CLI tools by npm.
+  QueryPlanner prompt lives in src/sec_filing_agent/services/query_planner/planner.py.
+  Its output schema lives in src/sec_filing_agent/models.py (PlannerOutput).
+  Model regression cases live in evals/query_planner/cases.yaml.
+  Unit tests use mocks; real-model evals call the production QueryPlanner directly.
+  Explicit calendar periods, including future periods, must be normalized;
+  range searches use closed inclusive date intervals.
+
+rules:
+  tasks:
+    - Include relevant unit tests and lint checks for code changes.
+    - For QueryPlanner prompt, schema, or model changes, include running npm run eval:planner and reviewing failing cases and semantic queries.
+    - Add baseline cases for newly discovered planner regressions; do not change expected values only to make an evaluation pass.
