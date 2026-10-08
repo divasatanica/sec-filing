@@ -93,31 +93,47 @@ uv run ruff check .
 uv run pytest
 ```
 
-### QueryPlanner 模型回归评测
+### QueryPlanner model regression evaluation
 
-修改 planner prompt 或 PlannerOutput schema 后，运行真实 DeepSeek 基线评测：
+After changing the planner prompt or PlannerOutput schema, run the baseline
+evaluation against the real DeepSeek API:
 
 ```bash
 npm ci
 npm run eval:planner
 ```
 
-问题集、判分方式和运行要求见 [evals/query_planner/README.md](evals/query_planner/README.md)。
+See [evals/query_planner/README.md](evals/query_planner/README.md) for the test
+cases, grading criteria, and execution requirements.
 
-### OpenSpec 开发工作流
+### OpenSpec development workflow
 
-Node.js 工具要求 Node 22.22+，通过 `npm ci` 安装锁定版本。
-OpenSpec 已初始化，配置见 `openspec/config.yaml`，Codex 工作流技能位于 `.agents/skills/`。
+The Node.js tools require Node 22.22+. Install the locked versions with `npm ci`.
+OpenSpec is initialized; its configuration is in `openspec/config.yaml`, and
+Codex workflow skills are in `.agents/skills/`.
 
 ```bash
 npm run openspec -- list
 npm run spec:validate
 ```
 
-在 Codex 中使用 `$openspec-propose` 描述新变更，使用 `$openspec-apply-change` 实施，
-完成后使用 `$openspec-archive-change` 归档。规范位于 `openspec/specs/`，变更位于
-`openspec/changes/`。当前已按九个 capability 整理现有功能基线，见
-[OpenSpec 规范索引](openspec/README.md)。
+In Codex, use `$openspec-propose` to describe a new change,
+`$openspec-apply-change` to implement it, and `$openspec-archive-change` to
+archive it when complete. Specifications live in `openspec/specs/`, and changes
+live in `openspec/changes/`. The existing functionality baseline is organized
+into nine capabilities; see the [OpenSpec specification index](openspec/README.md).
 
-修改 QueryPlanner prompt、输出 schema 或模型时，任务应包含 `npm run eval:planner`
-基线评测，并检查结构化字段与 semantic_query。
+Changes to the QueryPlanner prompt, output schema, or model must include the
+`npm run eval:planner` baseline evaluation and review of structured fields and
+semantic_query.
+
+### Documentation language
+
+Write all project-maintained READMEs in English, including new and updated
+nested or extensionless READMEs. Use English for headings, explanatory prose,
+and explanatory example comments. OpenSpec main specs, delta specs, and
+planning artifacts must also be written in English.
+
+Preserve commands, paths, configuration keys and values, links, and executable
+code semantics when translating documentation. Keep intentional multilingual
+input examples unchanged and write their surrounding explanations in English.
